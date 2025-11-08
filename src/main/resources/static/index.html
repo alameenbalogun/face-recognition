@@ -1,0 +1,53 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Face Capture - Spring Boot</title>
+</head>
+<body>
+  <h2>Capture face from webcam</h2>
+  <video id="video" width="400" height="300" autoplay></video><br/>
+  <input id="name" placeholder="Enter name"/>
+  <button id="snap">Capture & Submit</button>
+  <p id="status"></p>
+  <canvas id="canvas" width="400" height="300" style="display:none"></canvas>
+
+  <script>
+    const video = document.getElementById('video');
+    const canvas = document.getElementById('canvas');
+    const snapBtn = document.getElementById('snap');
+    const status = document.getElementById('status');
+
+    navigator.mediaDevices.getUserMedia({ video: true })
+      .then(stream => { video.srcObject = stream; })
+      .catch(err => { status.innerText = 'Error accessing camera: ' + err; });
+
+    snapBtn.addEventListener('click', async () => {
+      const ctx = canvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg');
+      const name = document.getElementById('name').value || 'unknown';
+
+      status.innerText = 'Uploading...';
+
+      const payload = { name: name, imageBase64: dataUrl };
+
+      try {
+        const res = await fetch('/api/users/capture', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const body = await res.json();
+        if (res.ok) {
+          status.innerText = 'Saved: ' + JSON.stringify(body);
+        } else {
+          status.innerText = 'Error: ' + (body || await res.text());
+        }
+      } catch (err) {
+        status.innerText = 'Error sending capture: ' + err;
+      }
+    });
+  </script>
+</body>
+</html>
